@@ -1,0 +1,44 @@
+from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
+
+from .forms import UserCreationForm, UserChangeForm
+from .models import User, Company, Branch
+
+
+class UserAdmin(UserAdmin):
+    add_form = UserCreationForm
+    form = UserChangeForm
+    model = User
+    list_display = ('email', 'is_staff', 'is_active','is_superuser')
+    list_filter = ('email', 'is_staff', 'is_active','is_superuser')
+    fieldsets = (
+        (None, {'fields': ('email', 'password')}),
+        ('Permissions', {'fields': ('is_staff', 'is_active','is_superuser')}),
+    )
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('email', 'password1', 'password2', 'is_staff', 'is_active','is_superuser')}
+         ),
+    )
+    search_fields = ('email',)
+    ordering = ('email',)
+
+
+class CompanyAdmin(admin.ModelAdmin):
+    list_display = ('company_name', 'company_code', 'company_type', 'head_office', 'longitude', 'latitude')
+    search_fields = ('company_name', 'company_code')
+    list_filter = ('company_type',)
+    ordering = ('company_name',)
+    
+class BranchAdmin(admin.ModelAdmin):
+    list_display = ('branch_code', 'company_id', 'company_name', 'branch_name', 'address', 'longitude', 'latitude')
+    search_fields = ('branch_code', 'company_id__company_name', 'branch_name')
+    list_filter = ('company_id',)
+    ordering = ('branch_code',)
+
+
+
+admin.site.register(Company, CompanyAdmin)
+admin.site.register(Branch, BranchAdmin)
+admin.site.register(User, UserAdmin)
