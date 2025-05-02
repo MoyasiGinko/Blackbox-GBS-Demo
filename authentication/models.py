@@ -90,17 +90,17 @@ class Company(models.Model):
   
   # Base model fields
     created_date = models.DateTimeField(auto_now_add=True)
-    # created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='company_created_users')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='company_created_users')
     updated_date = models.DateTimeField(auto_now=True)
-    # updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='company_updated_users')
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='company_updated_users')
     is_deleted = models.BooleanField(default=False)
     deleted_date = models.DateTimeField(null=True, blank=True)
-    # deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='company_deleted_users')
+    deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='company_deleted_users')
     status = models.BooleanField(default=True)
 
     # Permission fields
     is_staff = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=False)
+    is_verified = models.BooleanField(default=False)
   
     def __str__(self):
         return self.company_name
@@ -118,17 +118,17 @@ class Branch(models.Model):
     
     # Base model fields
     created_date = models.DateTimeField(auto_now_add=True)
-    # created_by = models.ForeignKey( settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="branch_created_users")
+    created_by = models.ForeignKey( settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="branch_created_users")
     updated_date = models.DateTimeField(auto_now=True)
-    # updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='branch_updated_users')
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='branch_updated_users')
     is_deleted = models.BooleanField(default=False)
     deleted_date = models.DateTimeField(null=True, blank=True)
-    # deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='branch_deleted_users')
+    deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='branch_deleted_users')
     status = models.BooleanField(default=True)
     
     # Permission fields
-    is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=False)
+    is_verified = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.company.company_name} - {self.branch_name}"
