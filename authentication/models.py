@@ -99,7 +99,7 @@ class Company(models.Model):
     status = models.BooleanField(default=True)
 
     # Permission fields
-    is_staff = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)
   
     def __str__(self):
