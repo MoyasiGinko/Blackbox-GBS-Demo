@@ -12,18 +12,21 @@ class User(AbstractBaseUser, PermissionsMixin):
     company_code = models.CharField(max_length=255, unique=True)
     branch_code = models.CharField(max_length=255, unique=True)
     username = models.CharField(max_length=255, unique=True)
+    password = models.CharField(max_length=255)
     mobile = models.CharField(max_length=15, unique=True)
     
     email = models.EmailField(_('email address'), unique=True)
-    first_name = models.CharField(max_length=255)
-    last_name = models.CharField(max_length=255)
-    
+
     user_type = models.CharField(max_length=255, choices=[
         ('admin', 'Admin'), ('staff', 'Staff')], default='staff')
     login_type = models.CharField(max_length=255, choices=[
         ('erp', 'ERP'),
         ('customer', 'Customer'), ('vendor', 'Vendor'), ('fmc', 'FMC')], default='customer')
     
+    first_name = models.CharField(max_length=255)
+    last_name = models.CharField(max_length=255)
+    
+    role_id = models.CharField()
     # Base model fields
     created_date = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, related_name='created_users')
