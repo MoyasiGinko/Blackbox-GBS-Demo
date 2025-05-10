@@ -8,26 +8,21 @@ from django.conf import settings
 # Create your models here.
 
 class User(AbstractBaseUser, PermissionsMixin):
+    
     id = models.AutoField(primary_key=True)
     company_code = models.CharField(max_length=255, unique=True)
     branch_code = models.CharField(max_length=255, unique=True)
     username = models.CharField(max_length=255, unique=True)
     password = models.CharField(max_length=255)
     mobile = models.CharField(max_length=15, unique=True)
-    
     email = models.EmailField(_('email address'), unique=True)
-
-    user_type = models.CharField(max_length=255, choices=[
-        ('admin', 'Admin'), ('staff', 'Staff')], default='staff')
-    login_type = models.CharField(max_length=255, choices=[
-        ('erp', 'ERP'),
-        ('customer', 'Customer'), ('vendor', 'Vendor'), ('fmc', 'FMC')], default='customer')
-    
+    user_type = models.IntegerField()
+    login_type = models.IntegerField()
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255)
-    
-    role_id = models.CharField()
-    # Base model fields
+    role_id = models.IntegerField()
+    is_verified = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=False)
     created_date = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, related_name='created_users')
     last_updated = models.DateTimeField(auto_now=True)
@@ -35,14 +30,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_deleted = models.BooleanField(default=False)
     deleted_date = models.DateTimeField(null=True, blank=True)
     deleted_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, related_name='deleted_users')
-    status = models.BooleanField(default=True)
     
-    # Permission fields
-    is_staff = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=False)
-    is_superuser = models.BooleanField(default=False)
-    is_verified = models.BooleanField(default=False)
-    
+
     # Override groups and permissions with custom related_names
     groups = models.ManyToManyField(
         'auth.Group',

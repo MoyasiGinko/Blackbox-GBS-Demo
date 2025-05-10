@@ -143,7 +143,7 @@ class AuthorityRegisterViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        
+        token = RefreshToken.for_user(request.user)
         # Send verification email
         current_site = get_current_site(request).domain
         relative_link = reverse('email-verify')
