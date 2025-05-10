@@ -10,13 +10,13 @@ from .models import User, Company, Branch
 from .validators import clean_first_name, clean_last_name, age_validator, password_validator
 
 
-class UserProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'age', 
-                 'address', 'profile_image', 'is_staff', 'is_active', 
-                 'is_verified', 'is_superuser')
-        read_only_fields = ('email', 'is_staff', 'is_active', 'is_verified', 'is_superuser')
+# class UserProfileSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = User
+#         fields = ('id', 'email', 'first_name', 'last_name', 'age', 
+#                  'address', 'profile_image', 'is_staff', 'is_active', 
+#                  'is_verified', 'is_superuser')
+#         read_only_fields = ('email', 'is_staff', 'is_active', 'is_verified', 'is_superuser')
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -25,20 +25,20 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('email', 'first_name', 'last_name', 'password', 
-                 'confirm_password', 'age', 'address', 'profile_image')
+        fields = (
+            'email', 'first_name', 'last_name', 'company_code', 
+            'branch_code', 'username', 'mobile', 'user_type', 
+            'login_type', 'password', 'confirm_password'
+        )
 
     def validate(self, attrs):
         first_name = attrs.get('first_name')
         last_name = attrs.get('last_name')
         password = attrs.get('password')
         confirm_password = attrs.get('confirm_password')
-        age = attrs.get('age')
 
-        # Use custom validators
         clean_first_name(first_name)
         clean_last_name(last_name)
-        age_validator(age)
         password_validator(password)
 
         if password != confirm_password:
@@ -49,7 +49,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('confirm_password')  # Remove confirm_password before creating user
         return User.objects.create_user(**validated_data)
-
 
 class LoginSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(max_length=255)

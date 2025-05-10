@@ -22,7 +22,7 @@ from rest_framework.permissions import IsAuthenticated
 from .serializers import (
     UserCreateSerializer, LoginSerializer, EmailVerificationSerializer,
     ResetPasswordEmailRequestSerializer, SetNewPasswordSerializer,
-    LogoutSerializer, UserProfileSerializer, LogEntrySerializer, CompanySerializer, BranchSerializer
+    LogoutSerializer, LogEntrySerializer, CompanySerializer, BranchSerializer
 )
 from rest_framework.parsers import MultiPartParser, FormParser
 
@@ -30,41 +30,6 @@ from rest_framework.parsers import MultiPartParser, FormParser
 class CustomRedirect(HttpResponsePermanentRedirect):
     allowed_schemes = [os.environ.get('APP_SCHEMA'), 'http', 'https']
 
-class AuthorityRegisterView(generics.GenericAPIView):
-    serializer_class = UserCreateSerializer
-
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            user = serializer.save()
-            token = RefreshToken.for_user(user).access_token
-            current_site = get_current_site(request).domain
-            relative_link = reverse('email-verify')
-            abs_url = f'http://{current_site}{relative_link}?token={str(token)}'
-            email_body = f'Hi {user.first_name}, Use this link to verify your email:\n{abs_url}'
-            data = {
-                'email_body': email_body,
-                'to_email': user.email,
-                'email_subject': 'Verify your email'
-            }
-            Util.send_email(data)
-            return Response(
-                {'email': user.email, 'message': "Successfully registered. Please verify your email"},
-                status=status.HTTP_201_CREATED
-            )
-
-class LoginAPIView(generics.GenericAPIView):
-    serializer_class = LoginSerializer
-
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        mainUser = User.objects.get(email=serializer.data['email'])
-        data = {
-            'email':serializer.data['email'],
-            'tokens':serializer.data['tokens'],
-        }
-        return Response(data, status=status.HTTP_200_OK)
 
 class VerifyEmail(views.APIView):
     serializer_class = EmailVerificationSerializer
@@ -154,18 +119,74 @@ class LogoutAPIView(generics.GenericAPIView):
         serializer.save()
         return Response({'message': 'Successfully logged out'}, status=status.HTTP_200_OK)
 
-class UserProfileAPIView(generics.GenericAPIView):
-    permission_classes = (permissions.IsAuthenticated,)
-    serializer_class = UserProfileSerializer
+# class UserProfileAPIView(generics.GenericAPIView):
+#     permission_classes = (permissions.IsAuthenticated,)
+#     serializer_class = UserProfileSerializer
 
-    def get(self, request):
-        serializer = self.serializer_class(request.user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+#     def get(self, request):
+#         serializer = self.serializer_class(request.user)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 # class ActivityLogs(generics.ListAPIView):
 #     queryset = LogEntry.objects.all()
 #     permission_classes = [permissions.IsAuthenticated]
 #     serializer_class = LogEntrySerializer
+
+
+
+class AuthorityRegisterViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.filter(is_deleted=False).order_by('-created_date')
+    serializer_class = UserCreateSerializer
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        
+        # Send verification email
+        current_site = get_current_site(request).domain
+        relative_link = reverse('email-verify')
+        abs_url = f'http://{current_site}{relative_link}?token={str(token)}'
+        email_body = f'Hi {user.first_name}, Use this link to verify your email:\n{abs_url}'
+        
+        data = {
+            'email_body': email_body,
+            'to_email': user.email,
+            'email_subject': 'Verify your email'
+        }
+        Util.send_email(data)
+        
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            {'email': user.email, 'token': str(token), 'message': "Successfully registered. Please verify your email"},
+            status=status.HTTP_201_CREATED,
+            headers=headers
+        )
+        
+    def perform_update(self, serializer):
+        # serializer.save(updated_by=self.request.user)
+        serializer.save()
+    
+    def perform_destroy(self, instance):
+        instance.is_deleted = True
+        instance.deleted_date = timezone.now()
+        # instance.deleted_by = self.request.user
+        instance.save()
+
+
+class LoginAPIView(generics.GenericAPIView):
+    serializer_class = LoginSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        mainUser = User.objects.get(email=serializer.data['email'])
+        data = {
+            'email':serializer.data['email'],
+            'tokens':serializer.data['tokens'],
+        }
+        return Response(data, status=status.HTTP_200_OK)
 
 
 
@@ -188,7 +209,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
     instance.save()
 
 
-class BranchViewSet(viewsets.ModelViewSet):
+class BranchViewSet(viewsets.ModelViewSet): 
     queryset = Branch.objects.filter(is_deleted=False).order_by('-created_date')
     serializer_class = BranchSerializer
     # permission_classes = [IsAuthenticated]
@@ -205,3 +226,4 @@ class BranchViewSet(viewsets.ModelViewSet):
         # instance.deleted_by = self.request.user
         instance.deleted_date = timezone.now()
         instance.save()
+        

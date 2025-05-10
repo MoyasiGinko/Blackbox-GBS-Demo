@@ -9,17 +9,25 @@ from django.conf import settings
 
 class User(AbstractBaseUser, PermissionsMixin):
     id = models.AutoField(primary_key=True)
+    company_code = models.CharField(max_length=255, unique=True)
+    branch_code = models.CharField(max_length=255, unique=True)
+    username = models.CharField(max_length=255, unique=True)
+    mobile = models.CharField(max_length=15, unique=True)
+    
     email = models.EmailField(_('email address'), unique=True)
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255)
-    age = models.IntegerField(null=True)
-    address = models.TextField(null=True)
-    profile_image = models.ImageField(upload_to='profile_images/', null=True, blank=True)
+    
+    user_type = models.CharField(max_length=255, choices=[
+        ('admin', 'Admin'), ('staff', 'Staff')], default='staff')
+    login_type = models.CharField(max_length=255, choices=[
+        ('erp', 'ERP'),
+        ('customer', 'Customer'), ('vendor', 'Vendor'), ('fmc', 'FMC')], default='customer')
     
     # Base model fields
     created_date = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, related_name='created_users')
-    updated_date = models.DateTimeField(auto_now=True)
+    last_updated = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, related_name='updated_users')
     is_deleted = models.BooleanField(default=False)
     deleted_date = models.DateTimeField(null=True, blank=True)
@@ -78,7 +86,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         ordering = ['-created_date']
-        
+   
     
 class Company(models.Model):
     company_name = models.CharField(max_length=255)
@@ -104,7 +112,6 @@ class Company(models.Model):
   
     def __str__(self):
         return self.company_name
-
 
 
 class Branch(models.Model):
