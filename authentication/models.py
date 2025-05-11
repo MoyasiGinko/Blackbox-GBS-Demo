@@ -10,27 +10,27 @@ from django.conf import settings
 class User(AbstractBaseUser, PermissionsMixin):
     
     id = models.AutoField(primary_key=True)
-    company_code = models.CharField(max_length=255, unique=True)
-    branch_code = models.CharField(max_length=255, unique=True)
+    company_code = models.CharField(max_length=255, unique=True, null=True)
+    branch_code = models.CharField(max_length=255, unique=True, null=True)
     username = models.CharField(max_length=255, unique=True)
-    password = models.CharField(max_length=255)
     mobile = models.CharField(max_length=15, unique=True)
-    email = models.EmailField(_('email address'), unique=True)
-    user_type = models.IntegerField()
-    login_type = models.IntegerField()
+    email = models.EmailField(unique=True)
+    user_type = models.IntegerField(null=True)
+    login_type = models.IntegerField(null=True)
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255)
-    role_id = models.IntegerField()
+    role_id = models.IntegerField(null=True)
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=False)
     created_date = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, related_name='created_users')
-    last_updated = models.DateTimeField(auto_now=True)
+    last_update = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, related_name='updated_users')
     is_deleted = models.BooleanField(default=False)
     deleted_date = models.DateTimeField(null=True, blank=True)
     deleted_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, related_name='deleted_users')
-    
+    is_superuser = models.BooleanField(default=False)
+    is_staff = models.BooleanField(default=False)
 
     # Override groups and permissions with custom related_names
     groups = models.ManyToManyField(
@@ -55,7 +55,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name']
+    REQUIRED_FIELDS = ['first_name', 'last_name', 'username', 'mobile',]
 
     objects = CustomUserManager()
 
@@ -131,3 +131,4 @@ class Branch(models.Model):
 
     def __str__(self):
         return f"{self.company.company_name} - {self.branch_name}"
+    

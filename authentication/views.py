@@ -18,7 +18,9 @@ import os
 from .utils import Util
 from .models import User, Company, Branch
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
 from .serializers import (
     UserCreateSerializer, LoginSerializer, EmailVerificationSerializer,
     ResetPasswordEmailRequestSerializer, SetNewPasswordSerializer,
@@ -138,12 +140,20 @@ class LogoutAPIView(generics.GenericAPIView):
 class AuthorityRegisterViewSet(viewsets.ModelViewSet):
     queryset = User.objects.filter(is_deleted=False).order_by('-created_date')
     serializer_class = UserCreateSerializer
+    authentication_classes = [JWTAuthentication] 
+    
+    def get_permissions(self):
+        if self.action in ['create', 'list']:
+            permission_classes = [AllowAny]
+        else: 
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
     
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        token = RefreshToken.for_user(request.user)
+        token = RefreshToken.for_user(user).access_token
         # Send verification email
         current_site = get_current_site(request).domain
         relative_link = reverse('email-verify')
@@ -186,6 +196,15 @@ class LoginAPIView(generics.GenericAPIView):
             'email':serializer.data['email'],
             'tokens':serializer.data['tokens'],
         }
+        
+        errors = serializer.errors
+        print('errors -----> : ', errors)
+        first_error = None
+        for field, error_list in errors.items():
+            first_error = error_list[0].__str__()
+            print('first_error : ', first_error)
+            break
+        
         return Response(data, status=status.HTTP_200_OK)
 
 

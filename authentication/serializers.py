@@ -22,7 +22,7 @@ from .validators import clean_first_name, clean_last_name, age_validator, passwo
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(max_length=68, min_length=8, write_only=True)
     confirm_password = serializers.CharField(max_length=68, min_length=8, write_only=True)
-
+    
     class Meta:
         model = User
         fields = (
@@ -47,7 +47,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        validated_data.pop('confirm_password')  # Remove confirm_password before creating user
+        validated_data.pop('confirm_password')
         return User.objects.create_user(**validated_data)
 
 class LoginSerializer(serializers.ModelSerializer):
@@ -66,9 +66,10 @@ class LoginSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         email = attrs.get('email')
         password = attrs.get('password')
-
+        print('email : ', email)
+        print('password : ', password)
         user = authenticate(email=email, password=password)
-        
+        print('user : ', user)
         if not user:
             raise AuthenticationFailed('Invalid credentials')
         if not user.is_active:
@@ -80,7 +81,6 @@ class LoginSerializer(serializers.ModelSerializer):
             'email': user.email,
             'tokens': user.tokens()
         }
-
 
 class EmailVerificationSerializer(serializers.ModelSerializer):
     token = serializers.CharField(max_length=555)
