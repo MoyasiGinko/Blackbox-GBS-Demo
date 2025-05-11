@@ -1,4 +1,5 @@
 from django.contrib.auth.base_user import BaseUserManager
+from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 
@@ -27,5 +28,9 @@ class CustomUserManager(BaseUserManager):
             raise ValueError(_('Superuser must have is_staff=True.'))
         if extra_fields.get('is_superuser') is not True:
             raise ValueError(_('Superuser must have is_superuser=True.'))
+
+        mobile = extra_fields.get('mobile')
+        if mobile and self.model.objects.filter(mobile=mobile).exists():
+            raise ValidationError(_('A user with that mobile number already exists.'))
 
         return self.create_user(email, first_name, last_name, password, **extra_fields)
