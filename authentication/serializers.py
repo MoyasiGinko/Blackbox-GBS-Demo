@@ -89,7 +89,6 @@ class EmailVerificationSerializer(serializers.ModelSerializer):
         model = User
         fields = ['token']
 
-
 class SetNewPasswordSerializer(serializers.Serializer):
     password = serializers.CharField(min_length=8, max_length=68, write_only=True)
     token = serializers.CharField(min_length=1, write_only=True)
@@ -115,14 +114,12 @@ class SetNewPasswordSerializer(serializers.Serializer):
         except Exception as e:
             raise AuthenticationFailed('Reset link is invalid or has expired')
 
-
 class ResetPasswordEmailRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(min_length=2)
     redirect_url = serializers.CharField(max_length=500, required=False)
 
     class Meta:
         fields = ['email', 'redirect_url']
-
 
 class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField()
@@ -137,13 +134,10 @@ class LogoutSerializer(serializers.Serializer):
         except TokenError:
             raise serializers.ValidationError('Token is invalid or expired')
 
-
 class LogEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = LogEntry
         fields = '__all__'
-
-
 
 class CompanySerializer(serializers.ModelSerializer):
   class Meta:
@@ -151,10 +145,8 @@ class CompanySerializer(serializers.ModelSerializer):
     fields = ['company_name', 'company_code', 'company_type', 'head_office', 'longitude', 'latitude']
     read_only_fields = ['created_by', 'updated_by', 'deleted_by', 'deleted_date', 'created_date', 'updated_date', 'is_deleted']
 
-
-
 class BranchSerializer(serializers.ModelSerializer):
   class Meta:
     model = Branch
-    fields = ['branch_code', 'company_id', 'company_name', 'branch_name', 'address', 'longitude', 'latitude']
+    fields = ['branch_code', 'company_id', 'branch_name', 'address', 'longitude', 'latitude']
     read_only_fields = ['created_by', 'updated_by', 'deleted_by', 'deleted_date', 'created_date', 'updated_date', 'is_deleted']
