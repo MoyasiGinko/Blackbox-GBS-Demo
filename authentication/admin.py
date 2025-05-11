@@ -32,8 +32,8 @@ class CompanyAdmin(admin.ModelAdmin):
     ordering = ('company_name',)
     
 class BranchAdmin(admin.ModelAdmin):
-    list_display = ('branch_code', 'company_id', 'company_name', 'branch_name', 'address', 'longitude', 'latitude')
-    search_fields = ('branch_code', 'company_id__company_name', 'branch_name')
+    list_display = ('branch_code', 'company_id',  'branch_name', 'address', 'longitude', 'latitude')
+    search_fields = ('branch_code', 'branch_name')
     list_filter = ('company_id',)
     ordering = ('branch_code',)
 

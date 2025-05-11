@@ -109,7 +109,6 @@ class Company(models.Model):
 class Branch(models.Model):
     branch_code = models.CharField(max_length=255, unique=True)
     company_id = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='branches')
-    company_name= models.CharField(max_length=255)
     branch_name = models.CharField(max_length=255)
     address = models.CharField(max_length=255)
     longitude = models.FloatField(null=True, blank=True)
