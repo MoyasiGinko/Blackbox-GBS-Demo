@@ -1,7 +1,8 @@
 from django.shortcuts import render
 from django.http.response import HttpResponsePermanentRedirect
 from django.shortcuts import redirect
-from django.utils.encoding import smart_str
+
+from django.utils.encoding import smart_str, smart_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from drf_yasg.utils import swagger_auto_schema
@@ -20,13 +21,12 @@ from .models import User, Company, Branch
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-
+from django.http import HttpResponseRedirect
 from .serializers import (
     UserCreateSerializer, LoginSerializer, EmailVerificationSerializer,
     ResetPasswordEmailRequestSerializer, SetNewPasswordSerializer,
-    LogoutSerializer, LogEntrySerializer, CompanySerializer, BranchSerializer
+    LogoutSerializer, CompanySerializer, BranchSerializer
 )
-from rest_framework.parsers import MultiPartParser, FormParser
 
 
 class CustomRedirect(HttpResponsePermanentRedirect):
@@ -191,22 +191,32 @@ class LoginAPIView(generics.GenericAPIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        mainUser = User.objects.get(email=serializer.data['email'])
-        data = {
-            'email':serializer.data['email'],
-            'tokens':serializer.data['tokens'],
-        }
-        
+
+        email =serializer.data['email']
+        tokens = serializer.data['tokens']
+
         errors = serializer.errors
-        print('errors -----> : ', errors)
         first_error = None
         for field, error_list in errors.items():
             first_error = error_list[0].__str__()
             print('first_error : ', first_error)
             break
         
-        return Response(data, status=status.HTTP_200_OK)
-
+        user = User.objects.get(email=email)
+        if not user:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        login_type = user.login_type.login_type
+        if login_type == 'fmc':
+            return redirect(f'/api/fmc/login?email={email}&tokens={tokens}')
+        elif login_type == 'erp':
+            return redirect(f'/api/erp/login?email={email}&tokens={tokens}')
+        elif login_type == 'vendor':
+            return redirect(f'/api/vendor/login?email={email}&tokens={tokens}')
+        elif login_type == 'customer':
+            return redirect(f'/api/customer/login?email={email}&tokens={tokens}')
+        else:
+            return Response({'error': 'Invalid login type. User Must have a valid login type'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CompanyViewSet(viewsets.ModelViewSet):
