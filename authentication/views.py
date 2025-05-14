@@ -32,7 +32,6 @@ from .serializers import (
 class CustomRedirect(HttpResponsePermanentRedirect):
     allowed_schemes = [os.environ.get('APP_SCHEMA'), 'http', 'https']
 
-
 class VerifyEmail(views.APIView):
     serializer_class = EmailVerificationSerializer
 
@@ -184,7 +183,6 @@ class AuthorityRegisterViewSet(viewsets.ModelViewSet):
         # instance.deleted_by = self.request.user
         instance.save()
 
-
 class LoginAPIView(generics.GenericAPIView):
     serializer_class = LoginSerializer
 
@@ -206,6 +204,18 @@ class LoginAPIView(generics.GenericAPIView):
         if not user:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
         
+        if not user.login_type:
+            return Response({'error': 'User must have a valid login type'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not user.company:
+            return Response({'error': 'User must have a valid company'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not user.branch:
+            return Response({'error': 'User must have a valid branch'}, status=status.HTTP_400_BAD_REQUEST)
+    
+        # if not user.role_id:
+        #     return Response({'error': 'User must have a valid role'}, status=status.HTTP_400_BAD_REQUEST)
+        
         login_type = user.login_type.login_type
         if login_type == 'fmc':
             return redirect(f'/api/fmc/login?email={email}&tokens={tokens}')
@@ -218,33 +228,20 @@ class LoginAPIView(generics.GenericAPIView):
         else:
             return Response({'error': 'Invalid login type. User Must have a valid login type'}, status=status.HTTP_400_BAD_REQUEST)
 
-
 class CompanyViewSet(viewsets.ModelViewSet):
-  queryset = Company.objects.filter(is_deleted=False).order_by('-created_date')
-  serializer_class = CompanySerializer
-#   permission_classes = [IsAuthenticated]
+    queryset = Company.objects.filter(is_deleted=False).order_by('-created_date')
+    serializer_class = CompanySerializer
+    authentication_classes = [JWTAuthentication]
 
-  def perform_create(self, serializer):
-    # serializer.save(created_by=self.request.user, updated_by=self.request.user)
-    serializer.save()
-
-  def perform_update(self, serializer):
-    serializer.save(updated_by=self.request.user)
-
-  def perform_destroy(self, instance):
-    instance.is_deleted = True
-    # instance.deleted_by = self.request.user
-    instance.deleted_date = timezone.now()
-    instance.save()
-
-
-class BranchViewSet(viewsets.ModelViewSet): 
-    queryset = Branch.objects.filter(is_deleted=False).order_by('-created_date')
-    serializer_class = BranchSerializer
-    # permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.action in ['create', 'list']:
+            permission_classes = [AllowAny]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
 
     def perform_create(self, serializer):
-        # serializer.save(created_by=self.request.user, updated_by=self.request.user)
+        serializer.save(created_by=self.request.user, updated_by=self.request.user)
         serializer.save()
 
     def perform_update(self, serializer):
@@ -252,7 +249,34 @@ class BranchViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         instance.is_deleted = True
-        # instance.deleted_by = self.request.user
+        instance.deleted_by = self.request.user
+        instance.deleted_date = timezone.now()
+        instance.save()
+
+class BranchViewSet(viewsets.ModelViewSet): 
+    queryset = Branch.objects.filter(is_deleted=False).order_by('-created_date')
+    serializer_class = BranchSerializer
+    queryset = Company.objects.filter(is_deleted=False).order_by('-created_date')
+    serializer_class = CompanySerializer
+    authentication_classes = [JWTAuthentication]
+
+    def get_permissions(self):
+        if self.action in ['create', 'list']:
+            permission_classes = [AllowAny]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user, updated_by=self.request.user)
+        serializer.save()
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user)
+
+    def perform_destroy(self, instance):
+        instance.is_deleted = True
+        instance.deleted_by = self.request.user
         instance.deleted_date = timezone.now()
         instance.save()
         

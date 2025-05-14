@@ -12,7 +12,7 @@ class UserAdmin(UserAdmin):
     list_display = ('email', 'mobile', 'is_staff', 'is_active', 'login_type', 'is_verified','is_superuser')
     list_filter = ('email', 'is_active','is_staff', 'is_verified', 'is_superuser')
     fieldsets = (
-        (None, {'fields': ('email', 'password', 'mobile', 'login_type')}),
+        (None, {'fields': ('email', 'password', 'mobile', 'company', 'branch', 'login_type')}),
         ('Permissions', {'fields': ('is_staff', 'is_active', 'is_verified', 'is_superuser')}),
     )
     add_fieldsets = (

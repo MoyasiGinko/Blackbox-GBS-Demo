@@ -26,8 +26,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'email', 'first_name', 'last_name', 'company_code', 
-            'branch_code', 'username', 'mobile', 'user_type', 
+            'email', 'first_name', 'last_name', 'company', 
+            'branch', 'username', 'mobile', 
             'login_type','role_id', 'password', 'confirm_password'
         )
 

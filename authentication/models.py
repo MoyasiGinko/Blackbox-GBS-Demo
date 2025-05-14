@@ -34,13 +34,32 @@ class BasePermission(models.Model):
     class Meta:
         abstract = True
 
+class Company(BaseModel):
+    company_name = models.CharField(max_length=255)
+    company_code = models.CharField(max_length=255, unique=True)
+    company_type = models.CharField(max_length=255)
+    head_office = models.CharField(max_length=255)
+    longitude = models.FloatField(null=True, blank=True)
+    latitude = models.FloatField(null=True, blank=True)
+    def __str__(self):
+        return self.company_name
+
+class Branch(BaseModel):
+    branch_code = models.CharField(max_length=255, unique=True)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='branches')
+    branch_name = models.CharField(max_length=255)
+    address = models.CharField(max_length=255)
+    longitude = models.FloatField(null=True, blank=True)
+    latitude = models.FloatField(null=True, blank=True)
+    def __str__(self):
+        return f"{self.company.company_name} - {self.branch_name}"
+
 class User(AbstractBaseUser, BaseModel, BasePermission, PermissionsMixin):
-    company_code = models.CharField(max_length=255, unique=True, null=True)
-    branch_code = models.CharField(max_length=255, unique=True, null=True)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='users', null=True)
+    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='users', null=True)
     username = models.CharField(max_length=255, unique=True)
     mobile = models.CharField(max_length=15, unique=True)
     email = models.EmailField(unique=True)
-    user_type = models.IntegerField(null=True)
     login_type = models.ForeignKey('LoginType', on_delete=models.CASCADE, null=True)
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255)
@@ -71,7 +90,7 @@ class User(AbstractBaseUser, BaseModel, BasePermission, PermissionsMixin):
     )
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name', 'username', 'mobile',]
+    REQUIRED_FIELDS = ['first_name', 'last_name', 'username', 'mobile']
 
     objects = CustomUserManager()
 
@@ -95,26 +114,6 @@ class User(AbstractBaseUser, BaseModel, BasePermission, PermissionsMixin):
     class Meta:
         ordering = ['-created_date']
    
-class Company(BaseModel):
-    company_name = models.CharField(max_length=255)
-    company_code = models.CharField(max_length=255, unique=True)
-    company_type = models.CharField(max_length=255)
-    head_office = models.CharField(max_length=255)
-    longitude = models.FloatField(null=True, blank=True)
-    latitude = models.FloatField(null=True, blank=True)
-    def __str__(self):
-        return self.company_name
-
-class Branch(BaseModel):
-    branch_code = models.CharField(max_length=255, unique=True)
-    company_id = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='branches')
-    branch_name = models.CharField(max_length=255)
-    address = models.CharField(max_length=255)
-    longitude = models.FloatField(null=True, blank=True)
-    latitude = models.FloatField(null=True, blank=True)
-    
-    def __str__(self):
-        return f"{self.company.company_name} - {self.branch_name}"
 
 class LoginType(BaseModel):
     login_type = models.CharField(max_length=255, unique=True)

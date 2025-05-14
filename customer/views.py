@@ -13,6 +13,18 @@ class LoginView(APIView):
     
     print('the user is', user)
     data = {
+      'email': user.email,
+      'first_name': user.first_name,
+      'last_name': user.last_name,
+      'mobile': user.mobile,
+      'username': user.username,
+      'company': user.company.company_name,
+      'branch': user.branch.branch_name,
+      'role_id': user.role_id,
+      'is_superuser': user.is_superuser,
+      'is_staff': user.is_staff,
+      'is_verified': user.is_verified,
+      'is_active': user.is_active,
       'login_type': user.login_type.login_type,
       'token': tokens
     }
