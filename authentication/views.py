@@ -151,6 +151,21 @@ class AuthorityRegisterViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        print('serializer : ', serializer.validated_data)
+        company = serializer.validated_data['company']
+        branch = serializer.validated_data['branch']
+        print('company Name : ', company.company_name)
+        print('branch Name : ', branch.branch_name)
+        
+        if not Company.objects.filter(company_name=company.company_name).exists():
+            return Response({'error': 'Company does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not Branch.objects.filter(branch_name=branch.branch_name).exists():
+            return Response({'error': 'Branch does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not Branch.objects.filter(company=company, branch_name=branch.branch_name).exists():
+            return Response({'error': 'Branch does not exist in the specified company'}, status=status.HTTP_400_BAD_REQUEST)
+        
         user = serializer.save()
         token = RefreshToken.for_user(user).access_token
         # Send verification email
@@ -164,11 +179,11 @@ class AuthorityRegisterViewSet(viewsets.ModelViewSet):
             'to_email': user.email,
             'email_subject': 'Verify your email'
         }
-        Util.send_email(data)
+        # Util.send_email(data)
         
         headers = self.get_success_headers(serializer.data)
         return Response(
-            {'email': user.email, 'token': str(token), 'message': "Successfully registered. Please verify your email"},
+            {'email': user.email, 'message': "Successfully registered. Please verify your email"},
             status=status.HTTP_201_CREATED,
             headers=headers
         )
@@ -256,8 +271,6 @@ class CompanyViewSet(viewsets.ModelViewSet):
 class BranchViewSet(viewsets.ModelViewSet): 
     queryset = Branch.objects.filter(is_deleted=False).order_by('-created_date')
     serializer_class = BranchSerializer
-    queryset = Company.objects.filter(is_deleted=False).order_by('-created_date')
-    serializer_class = CompanySerializer
     authentication_classes = [JWTAuthentication]
 
     def get_permissions(self):
