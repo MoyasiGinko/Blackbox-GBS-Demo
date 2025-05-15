@@ -249,13 +249,14 @@ class CompanyViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
 
     def get_permissions(self):
-        if self.action in ['create', 'list']:
+        if self.action in ['list']:
             permission_classes = [AllowAny]
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
 
     def perform_create(self, serializer):
+        print('the request user : ', self.request.user)
         serializer.save(created_by=self.request.user, updated_by=self.request.user)
         serializer.save()
 
@@ -274,7 +275,7 @@ class BranchViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
 
     def get_permissions(self):
-        if self.action in ['create', 'list']:
+        if self.action in ['list']:
             permission_classes = [AllowAny]
         else:
             permission_classes = [IsAuthenticated]
