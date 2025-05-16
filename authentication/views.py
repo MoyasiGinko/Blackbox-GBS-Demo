@@ -139,23 +139,16 @@ class LogoutAPIView(generics.GenericAPIView):
 class AuthorityRegisterViewSet(viewsets.ModelViewSet):
     queryset = User.objects.filter(is_deleted=False).order_by('-created_date')
     serializer_class = UserCreateSerializer
-    authentication_classes = [JWTAuthentication] 
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated] 
     
-    def get_permissions(self):
-        if self.action in ['create', 'list']:
-            permission_classes = [AllowAny]
-        else: 
-            permission_classes = [IsAuthenticated]
-        return [permission() for permission in permission_classes]
     
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        print('serializer : ', serializer.validated_data)
         company = serializer.validated_data['company']
         branch = serializer.validated_data['branch']
-        print('company Name : ', company.company_name)
-        print('branch Name : ', branch.branch_name)
+  
         
         if not Company.objects.filter(company_name=company.company_name).exists():
             return Response({'error': 'Company does not exist'}, status=status.HTTP_400_BAD_REQUEST)
@@ -247,13 +240,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.filter(is_deleted=False).order_by('-created_date')
     serializer_class = CompanySerializer
     authentication_classes = [JWTAuthentication]
-
-    def get_permissions(self):
-        if self.action in ['list']:
-            permission_classes = [AllowAny]
-        else:
-            permission_classes = [IsAuthenticated]
-        return [permission() for permission in permission_classes]
+    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
         print('the request user : ', self.request.user)
@@ -273,13 +260,8 @@ class BranchViewSet(viewsets.ModelViewSet):
     queryset = Branch.objects.filter(is_deleted=False).order_by('-created_date')
     serializer_class = BranchSerializer
     authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
 
-    def get_permissions(self):
-        if self.action in ['list']:
-            permission_classes = [AllowAny]
-        else:
-            permission_classes = [IsAuthenticated]
-        return [permission() for permission in permission_classes]
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, updated_by=self.request.user)
