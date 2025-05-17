@@ -1,9 +1,9 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-
-from .forms import UserCreationForm, UserChangeForm
 from .models import User, Company, Branch, LoginType
-
+from .forms import UserCreationForm, UserChangeForm
+from django.urls import path
+from django.http import JsonResponse
 
 class UserAdmin(UserAdmin):
     add_form = UserCreationForm
@@ -24,6 +24,21 @@ class UserAdmin(UserAdmin):
     search_fields = ('email',)
     ordering = ('email',)
 
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('load_branches/', self.load_branches, name='load_branches'),
+        ]
+        return custom_urls + urls
+    
+    def load_branches(self, request):
+        company_id = request.GET.get('company_id')
+        branches = Branch.objects.filter(company=company_id).values('id', 'branch_name')
+        return JsonResponse(list(branches), safe=False)
+    
+    class Media:
+        js = ('authentication/js/dynamic_branch_selection.js',)
+    
 class CompanyAdmin(admin.ModelAdmin):
     list_display = ('company_name', 'company_code', 'company_type', 'head_office', 'longitude', 'latitude')
     search_fields = ('company_name', 'company_code')
