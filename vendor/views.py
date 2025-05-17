@@ -13,6 +13,7 @@ class LoginView(APIView):
     
     print('the user is', user)
     data = {
+      'Message': "Hello From Vendor Module",
       'email': user.email,
       'first_name': user.first_name,
       'last_name': user.last_name,
