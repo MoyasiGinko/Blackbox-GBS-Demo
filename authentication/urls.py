@@ -25,6 +25,8 @@ authentication =[
     path('password-reset/<uidb64>/<token>/', views.PasswordTokenCheckApi.as_view(),name="password-reset-confirm"),
     path('password-reset-complete',views.SetNewPasswordAPIView.as_view(),name="password-reset-complete"),
     path('logout/', views.LogoutAPIView.as_view(), name="logout"),
+    path('check_company_code/', views.CheckCompanyCode.as_view(), name="check_company_code"),
+    path('get_branches_by_company/', views.GetBranchesByCompany.as_view(), name="get_branches_by_company"),
 ]
 
 urlpatterns  = authentication

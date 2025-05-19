@@ -276,3 +276,27 @@ class BranchViewSet(viewsets.ModelViewSet):
         instance.deleted_date = timezone.now()
         instance.save()
         
+        
+class CheckCompanyCode(generics.GenericAPIView):
+    def post(self, request):
+        try:
+            code = request.data.get('companyCode')
+            print('the code : ', code)
+            company = Company.objects.get(company_code=code)
+            return Response({'exists': True}, status=status.HTTP_200_OK)
+        except Company.DoesNotExist:
+            return Response({'exists': False}, status=status.HTTP_404_NOT_FOUND)
+
+
+class GetBranchesByCompany(generics.GenericAPIView):
+    def post(self, request):
+        try:
+            company_code = request.data.get('companyCode')
+            print('the code : ', company_code)
+            branches = Branch.objects.filter(company__company_code=company_code)
+            print('the branches : ', branches)
+            serializer = BranchSerializer(branches, many=True)
+            print('the serializer : ', serializer.data)
+            return Response({'branches': serializer.data}, status=status.HTTP_200_OK)
+        except Company.DoesNotExist:
+            return Response({'exists': False}, status=status.HTTP_404_NOT_FOUND)
