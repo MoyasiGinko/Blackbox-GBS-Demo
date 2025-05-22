@@ -51,22 +51,22 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return User.objects.create_user(**validated_data)
 
 class LoginSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(max_length=255)
+    username = serializers.CharField(max_length=255)
     password = serializers.CharField(max_length=68, write_only=True)
     tokens = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('email', 'password', 'tokens')
+        fields = ('username', 'password', 'tokens')
 
     def get_tokens(self, obj):
-        user = User.objects.get(email=obj['email'])
+        user = User.objects.get(username=obj['username'])
         return user.tokens()
 
     def validate(self, attrs):
-        email = attrs.get('email')
+        username = attrs.get('username')
         password = attrs.get('password')
-        user = authenticate(email=email, password=password)
+        user = authenticate(username=username, password=password)
         if not user:
             raise AuthenticationFailed('Invalid credentials')
         if not user.is_active:
@@ -75,7 +75,7 @@ class LoginSerializer(serializers.ModelSerializer):
             raise AuthenticationFailed('Account Unverified')
 
         return {
-            'email': user.email,
+            'username': user.username,
             'tokens': user.tokens()
         }
 

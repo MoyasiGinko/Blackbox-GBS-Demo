@@ -1,35 +1,26 @@
-from datetime import timedelta
-from django.core.mail import EmailMessage
-import random
-
-import threading
-
-from django.utils import timezone
+from django.core.mail import send_mail
+import os
 
 
-class EmailThread(threading.Thread):
-
-    def __init__(self, email):
-        self.email = email
-        threading.Thread.__init__(self)
-
-    def run(self):
-        self.email.send()
-
-class Util:
-    @staticmethod
-    def send_email(data):
-        email = EmailMessage(
-            subject=data['email_subject'], body=data['email_body'], to=[data['to_email']]
-        )
-        EmailThread(email).start()
-
-
-def return_date():
-    now = timezone.now()
-    return now + timedelta(days=1)
-
-
-def generate_pk():
-    number = random.randint(1000, 9999)
-    return '{}{}'.format(timezone.now().strftime('%y%m%d'), number)
+def send_email(subject, recipient_list, message):
+  print("Sending email...")
+  from_email = os.environ.get('EMAIL_HOST_USER')
+  password = os.environ.get('EMAIL_HOST_PASSWORD')
+  print('the email host user is:', from_email)
+  print('the email host password is:', password)
+  if not from_email:
+    raise ValueError("EMAIL_HOST_USER environment variable is not set")
+  
+  if not recipient_list:
+    raise ValueError("Recipient list is empty")
+  
+  try:
+    send_mail(
+      subject=subject,
+      message=message,
+      from_email=None,
+      recipient_list=recipient_list,
+      fail_silently=False,
+    )
+  except Exception as e:
+    raise RuntimeError(f"Failed to send email: {e}")

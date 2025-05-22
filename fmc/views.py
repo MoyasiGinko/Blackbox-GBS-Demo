@@ -5,9 +5,9 @@ from authentication.models import User
 
 class LoginView(APIView):
   def get(self, request):
-    email = request.GET.get('email')
+    username = request.GET.get('username')
     tokens = request.GET.get('tokens')
-    user = User.objects.get(email=email)
+    user = User.objects.get(username=username)
     if not user:
       return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
     

@@ -16,7 +16,7 @@ from django.conf import settings
 from django.utils import timezone
 import jwt
 import os
-from .utils import Util
+from .utils import send_email
 from .models import User, Company, Branch
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -63,18 +63,13 @@ class RequestPasswordResetEmail(generics.GenericAPIView):
         email = request.data.get('email','')
         if User.objects.filter(email=email).exists():
             user = User.objects.get(email=email)
-            uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
-            token = PasswordResetTokenGenerator().make_token(user)
-            current_site = get_current_site(request=request).domain
-            relativeLink = reverse('password-reset-confirm', kwargs={"uidb64":uidb64, "token":token})
-            redirect_url = request.data.get('redirect_url','')
-            absurl = 'http://'+current_site + relativeLink
-            email_body = "Hello, \n Use link below to reset your password \n" + \
-                absurl + "?redirect_url="+redirect_url
-            data = {
-                'email_body':email_body, 'to_email':email, 'email_subject':'Reset Your Password'
-            }
-            Util.send_email(data)
+            verification_token = RefreshToken.for_user(user).access_token
+            verification_url = f"{os.environ.get('FRONTEND_BASE_URL')}/accounts/verifyEmail?token={verification_token}"
+            send_email(
+                subject="Verify your email",
+                recipient_list=[user.email],
+                message=f"Please reset your password by clicking on the following link: {verification_url}"
+            )
         return Response({'success':'We have sent you a link to reset your password'}, status = status.HTTP_200_OK)
 
 class PasswordTokenCheckApi(generics.GenericAPIView):
@@ -160,20 +155,14 @@ class AuthorityRegisterViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Branch does not exist in the specified company'}, status=status.HTTP_400_BAD_REQUEST)
         
         user = serializer.save()
-        token = RefreshToken.for_user(user).access_token
-        # Send verification email
-        current_site = get_current_site(request).domain
-        relative_link = reverse('email-verify')
-        abs_url = f'http://{current_site}{relative_link}?token={str(token)}'
-        email_body = f'Hi {user.first_name}, Use this link to verify your email:\n{abs_url}'
         
-        data = {
-            'email_body': email_body,
-            'to_email': user.email,
-            'email_subject': 'Verify your email'
-        }
-        # Util.send_email(data)
-        
+        verification_token = RefreshToken.for_user(user).access_token
+        verification_url = f"{os.environ.get('FRONTEND_BASE_URL')}/accounts/verifyEmail?token={verification_token}"
+        send_email(
+            subject="Verify your email",
+            recipient_list=[user.email],
+            message=f"Please verify your email by clicking on the following link: {verification_url}"
+        )
         headers = self.get_success_headers(serializer.data)
         return Response(
             {'email': user.email, 'message': "Successfully registered. Please verify your email"},
@@ -198,7 +187,7 @@ class LoginAPIView(generics.GenericAPIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        email =serializer.data['email']
+        username =serializer.data['username']
         tokens = serializer.data['tokens']
 
         errors = serializer.errors
@@ -208,7 +197,7 @@ class LoginAPIView(generics.GenericAPIView):
             print('first_error : ', first_error)
             break
         
-        user = User.objects.get(email=email)
+        user = User.objects.get(username=username)
         if not user:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
         
@@ -226,13 +215,13 @@ class LoginAPIView(generics.GenericAPIView):
         
         login_type = user.login_type.login_type
         if login_type == 'fmc':
-            return redirect(f'/api/fmc/login?email={email}&tokens={tokens}')
+            return redirect(f'/api/fmc/login?username={username}&tokens={tokens}')
         elif login_type == 'erp':
-            return redirect(f'/api/erp/login?email={email}&tokens={tokens}')
+            return redirect(f'/api/erp/login?username={username}&tokens={tokens}')
         elif login_type == 'vendor':
-            return redirect(f'/api/vendor/login?email={email}&tokens={tokens}')
+            return redirect(f'/api/vendor/login?username={username}&tokens={tokens}')
         elif login_type == 'customer':
-            return redirect(f'/api/customer/login?email={email}&tokens={tokens}')
+            return redirect(f'/api/customer/login?username={username}&tokens={tokens}')
         else:
             return Response({'error': 'Invalid login type. User Must have a valid login type'}, status=status.HTTP_400_BAD_REQUEST)
 
