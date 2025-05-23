@@ -6,18 +6,11 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
 from django.contrib.admin.models import LogEntry
-from .models import User, Company, Branch
-from .validators import clean_first_name, clean_last_name, age_validator, password_validator
-
-
-# class UserProfileSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = User
-#         fields = ('id', 'email', 'first_name', 'last_name', 'age', 
-#                  'address', 'profile_image', 'is_staff', 'is_active', 
-#                  'is_verified', 'is_superuser')
-#         read_only_fields = ('email', 'is_staff', 'is_active', 'is_verified', 'is_superuser')
-
+from .models import (
+    User, Subscription, Payment, Service, 
+    UserService, Cookie, CookieInjectionLog
+)
+from .validators import clean_first_name, clean_last_name, password_validator
 
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(max_length=68, min_length=8, write_only=True)
@@ -26,19 +19,13 @@ class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'email', 'first_name', 'last_name', 'company', 
-            'branch', 'username', 'mobile', 
-            'login_type','role_id', 'password', 'confirm_password'
+            'email', 'full_name', 'password', 'confirm_password',
+            'phone_number', 'subscription'
         )
 
     def validate(self, attrs):
-        first_name = attrs.get('first_name')
-        last_name = attrs.get('last_name')
         password = attrs.get('password')
         confirm_password = attrs.get('confirm_password')
-
-        clean_first_name(first_name)
-        clean_last_name(last_name)
         password_validator(password)
 
         if password != confirm_password:
@@ -51,31 +38,32 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return User.objects.create_user(**validated_data)
 
 class LoginSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(max_length=255)
+    email = serializers.EmailField()
     password = serializers.CharField(max_length=68, write_only=True)
     tokens = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('username', 'password', 'tokens')
+        fields = ('email', 'password', 'tokens')
 
     def get_tokens(self, obj):
-        user = User.objects.get(username=obj['username'])
+        user = User.objects.get(email=obj['email'])
         return user.tokens()
 
     def validate(self, attrs):
-        username = attrs.get('username')
+        email = attrs.get('email')
         password = attrs.get('password')
-        user = authenticate(username=username, password=password)
+        user = authenticate(email=email, password=password)
+        
         if not user:
             raise AuthenticationFailed('Invalid credentials')
         if not user.is_active:
             raise AuthenticationFailed('Account is disabled')
-        if not user.is_verified:
-            raise AuthenticationFailed('Account Unverified')
+        if not user.email_verified:
+            raise AuthenticationFailed('Email not verified')
 
         return {
-            'username': user.username,
+            'email': user.email,
             'tokens': user.tokens()
         }
 
@@ -97,7 +85,7 @@ class SetNewPasswordSerializer(serializers.Serializer):
             token = attrs.get('token')
             uidb64 = attrs.get('uidb64')
 
-            password_validator(password)  # Validate password
+            password_validator(password)
             
             id = force_str(urlsafe_base64_decode(uidb64))
             user = User.objects.get(id=id)
@@ -131,19 +119,35 @@ class LogoutSerializer(serializers.Serializer):
         except TokenError:
             raise serializers.ValidationError('Token is invalid or expired')
 
+class SubscriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscription
+        fields = ['id', 'name', 'price', 'duration_days', 'features', 'description']
+
+class ServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = ['id', 'name', 'login_url', 'description', 'required_subscription']
+
+class UserServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserService
+        fields = ['id', 'service', 'credentials', 'is_active', 'created_at', 'last_used', 'usage_count']
+        read_only_fields = ['created_at', 'last_used', 'usage_count']
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ['id', 'amount', 'payment_status', 'subscription', 'transaction_id', 'payment_method', 'billing_details']
+        read_only_fields = ['timestamp']
+
+class CookieSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Cookie
+        fields = ['id', 'user_service', 'cookie_data', 'expires_at', 'status']
+        read_only_fields = ['extracted_at', 'last_validated']
+
 class LogEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = LogEntry
         fields = '__all__'
-
-class CompanySerializer(serializers.ModelSerializer):
-  class Meta:
-    model = Company
-    fields = ['company_name', 'company_code', 'company_type', 'head_office', 'longitude', 'latitude']
-    read_only_fields = ['created_by', 'updated_by', 'deleted_by', 'deleted_date', 'created_date', 'updated_date', 'is_deleted']
-
-class BranchSerializer(serializers.ModelSerializer):
-  class Meta:
-    model = Branch
-    fields = ['branch_code', 'company_id', 'branch_name', 'address', 'longitude', 'latitude']
-    read_only_fields = ['created_by', 'updated_by', 'deleted_by', 'deleted_date', 'created_date', 'updated_date', 'is_deleted']

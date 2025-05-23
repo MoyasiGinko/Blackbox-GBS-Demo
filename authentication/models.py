@@ -1,122 +1,262 @@
+import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.utils.translation import gettext_lazy as _
-from django.utils import timezone
 from .manager import CustomUserManager
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
-# Create your models here.
+from django.core.validators import MinValueValidator
+from django.utils import timezone
+from cryptography.fernet import Fernet
 
+def get_encryption_key():
+    """Get or create encryption key for sensitive data"""
+    return Fernet(settings.ENCRYPTION_KEY.encode())
 
-class BaseModel(models.Model):
-    created_date = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="%(class)s_created_by"
-    )
-    last_update = models.DateTimeField(auto_now=True)
-    updated_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="%(class)s_updated_by"
-    )
-    is_deleted = models.BooleanField(default=False)
-    deleted_date = models.DateTimeField(null=True, blank=True)
-    deleted_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=models.SET_NULL, related_name="%(class)s_deleted_by"
-    )
-    status = models.BooleanField(default=True)
-
-    class Meta:
-        abstract = True
-
-class BasePermission(models.Model):
-    is_active = models.BooleanField(default=False)
-    is_verified = models.BooleanField(default=False)
-    
-    class Meta:
-        abstract = True
-
-class Company(BaseModel):
-    company_name = models.CharField(max_length=255)
-    company_code = models.CharField(max_length=255, unique=True)
-    company_type = models.CharField(max_length=255)
-    head_office = models.CharField(max_length=255)
-    longitude = models.FloatField(null=True, blank=True)
-    latitude = models.FloatField(null=True, blank=True)
-    def __str__(self):
-        return self.company_name
-
-class Branch(BaseModel):
-    branch_code = models.CharField(max_length=255, unique=True)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='branches')
-    branch_name = models.CharField(max_length=255)
-    address = models.CharField(max_length=255)
-    longitude = models.FloatField(null=True, blank=True)
-    latitude = models.FloatField(null=True, blank=True)
-    def __str__(self):
-        return f"{self.company.company_name} - {self.branch_name}"
-
-class User(AbstractBaseUser, BaseModel, BasePermission, PermissionsMixin):
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='users', null=True)
-    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='users', null=True)
-    username = models.CharField(max_length=255, unique=True)
-    mobile = models.CharField(max_length=15, unique=True)
-    email = models.EmailField(unique=True)
-    login_type = models.ForeignKey('LoginType', on_delete=models.CASCADE, null=True)
-    first_name = models.CharField(max_length=255)
-    last_name = models.CharField(max_length=255)
-    role_id = models.IntegerField(null=True)
-    is_superuser = models.BooleanField(default=False)
+class User(AbstractBaseUser, PermissionsMixin):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField(_('email address'), unique=True)
+    full_name = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
-
-    # Override groups and permissions with custom related_names
-    groups = models.ManyToManyField(
-        'auth.Group',
-        verbose_name=_('groups'),
-        blank=True,
-        help_text=_(
-            'The groups this user belongs to. A user will get all permissions '
-            'granted to each of their groups.'
-        ),
-        related_name='custom_user_set',
-        related_query_name='custom_user'
+    is_admin = models.BooleanField(default=False)
+    date_joined = models.DateTimeField(auto_now_add=True)
+    subscription = models.ForeignKey(
+        'Subscription', 
+        null=True, 
+        blank=True, 
+        on_delete=models.SET_NULL,
+        related_name='users'
     )
-    
-    user_permissions = models.ManyToManyField(
-        'auth.Permission',
-        verbose_name=_('user permissions'),
-        blank=True,
-        help_text=_('Specific permissions for this user.'),
-        related_name='custom_user_set',
-        related_query_name='custom_user'
-    )
-
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['first_name', 'last_name', 'email', 'mobile']
+    last_login = models.DateTimeField(null=True, blank=True)
+    email_verified = models.BooleanField(default=False)
+    phone_number = models.CharField(max_length=15, null=True, blank=True)
+    two_factor_enabled = models.BooleanField(default=False)
 
     objects = CustomUserManager()
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['full_name']
 
     def __str__(self):
         return self.email
 
-    def tokens(self):
-        refresh = RefreshToken.for_user(self)
-        return {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token)
-        }
+    def has_subscription(self):
+        """Check if user has an active subscription"""
+        if not self.subscription:
+            return False
+        latest_payment = self.payments.filter(
+            payment_status='success'
+        ).order_by('-timestamp').first()
+        if not latest_payment:
+            return False
+        expiry_date = latest_payment.timestamp + timezone.timedelta(
+            days=self.subscription.duration_days
+        )
+        return timezone.now() <= expiry_date
 
-    def soft_delete(self, user):
-        self.is_deleted = True
-        self.deleted_date = timezone.now()
-        self.deleted_by = user
-        self.status = False
-        self.save()
+class Subscription(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=50)
+    price = models.DecimalField(
+        max_digits=8, 
+        decimal_places=2,
+        validators=[MinValueValidator(0)]
+    )
+    duration_days = models.IntegerField(validators=[MinValueValidator(1)])
+    features = models.JSONField(default=dict)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
 
-    class Meta:
-        ordering = ['-created_date']
-   
-
-class LoginType(BaseModel):
-    login_type = models.CharField(max_length=255, unique=True)
     def __str__(self):
-        return self.login_type
-    
+        return f"{self.name} (${self.price} for {self.duration_days} days)"
+
+class Payment(models.Model):
+    PAYMENT_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('success', 'Success'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded')
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE,
+        related_name='payments'
+    )
+    amount = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        validators=[MinValueValidator(0)]
+    )
+    payment_status = models.CharField(
+        max_length=20, 
+        choices=PAYMENT_STATUS_CHOICES,
+        default='pending'
+    )
+    timestamp = models.DateTimeField(auto_now_add=True)
+    subscription = models.ForeignKey(
+        Subscription, 
+        on_delete=models.CASCADE,
+        related_name='payments'
+    )
+    transaction_id = models.CharField(max_length=255, unique=True)
+    payment_method = models.CharField(max_length=50)
+    billing_details = models.JSONField(default=dict)
+    refund_reason = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.user.email} - {self.amount} - {self.payment_status}"
+
+class Service(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=50)
+    login_url = models.URLField()
+    description = models.TextField()
+    is_active = models.BooleanField(default=True)
+    required_subscription = models.ForeignKey(
+        Subscription,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='services'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+class UserService(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE,
+        related_name='user_services'
+    )
+    service = models.ForeignKey(
+        Service, 
+        on_delete=models.CASCADE,
+        related_name='user_services'
+    )
+    _credentials = models.TextField()  # Encrypted credentials
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used = models.DateTimeField(null=True)
+    usage_count = models.IntegerField(default=0)
+
+    @property
+    def credentials(self):
+        """Decrypt credentials before returning"""
+        if not self._credentials:
+            return {}
+        fernet = get_encryption_key()
+        decrypted = fernet.decrypt(self._credentials.encode())
+        return eval(decrypted.decode())
+
+    @credentials.setter
+    def credentials(self, value):
+        """Encrypt credentials before saving"""
+        if not value:
+            self._credentials = ''
+            return
+        fernet = get_encryption_key()
+        encrypted = fernet.encrypt(str(value).encode())
+        self._credentials = encrypted.decode()
+
+    def __str__(self):
+        return f"{self.user.email} - {self.service.name}"
+
+class Cookie(models.Model):
+    COOKIE_STATUS_CHOICES = [
+        ('valid', 'Valid'),
+        ('expired', 'Expired'),
+        ('revoked', 'Revoked')
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_service = models.ForeignKey(
+        UserService, 
+        on_delete=models.CASCADE,
+        related_name='cookies'
+    )
+    _cookie_data = models.TextField()  # Encrypted cookie data
+    extracted_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    status = models.CharField(
+        max_length=20, 
+        choices=COOKIE_STATUS_CHOICES,
+        default='valid'
+    )
+    last_validated = models.DateTimeField(auto_now=True)
+    validation_errors = models.TextField(blank=True)
+
+    @property
+    def cookie_data(self):
+        """Decrypt cookie data before returning"""
+        if not self._cookie_data:
+            return {}
+        fernet = get_encryption_key()
+        decrypted = fernet.decrypt(self._cookie_data.encode())
+        return eval(decrypted.decode())
+
+    @cookie_data.setter
+    def cookie_data(self, value):
+        """Encrypt cookie data before saving"""
+        if not value:
+            self._cookie_data = ''
+            return
+        fernet = get_encryption_key()
+        encrypted = fernet.encrypt(str(value).encode())
+        self._cookie_data = encrypted.decode()
+
+    def __str__(self):
+        return f"{self.user_service.service.name} cookie for {self.user_service.user.email}"
+
+    def is_valid(self):
+        return (
+            self.status == 'valid' and 
+            timezone.now() <= self.expires_at
+        )
+
+class CookieInjectionLog(models.Model):
+    INJECTION_STATUS_CHOICES = [
+        ('success', 'Success'),
+        ('failure', 'Failure')
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    cookie = models.ForeignKey(
+        Cookie, 
+        on_delete=models.CASCADE,
+        related_name='injection_logs'
+    )
+    injection_status = models.CharField(
+        max_length=20, 
+        choices=INJECTION_STATUS_CHOICES
+    )
+    message = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True)
+    user_agent = models.TextField(blank=True)
+    request_data = models.JSONField(default=dict)
+
+    def __str__(self):
+        return f"{self.cookie.user_service.service.name} injection - {self.injection_status}"
+
+class LoginAttempt(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE,
+        related_name='login_attempts'
+    )
+    timestamp = models.DateTimeField(auto_now_add=True)
+    success = models.BooleanField()
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.TextField()
+    location_data = models.JSONField(default=dict)
+
+    def __str__(self):
+        return f"{self.user.email} - {'Success' if self.success else 'Failure'}"

@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure--!=x584l6j6n&8tb#_8^l9zx6w#yh1=rrn2%lkn@6yde1fx7$q
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['cj5385-8000.csb.app', 'localhost', '127.0.0.1']
 
 # Application definition
 
@@ -190,6 +190,9 @@ SIMPLE_JWT = {
 # EMAIL_HOST_USER = 'your-email@gmail.com'
 # EMAIL_HOST_PASSWORD = 'your-app-password'
 
+# Encryption key for sensitive data (must be 32 url-safe base64-encoded bytes)
+ENCRYPTION_KEY = 'AYVKLFErKFiH33CkYgkopbLaCXFDgfMr9vHLDhgbUAg='
+
 # Looking to send emails in production? Check out our Email API/SMTP product!
 EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
 EMAIL_HOST_USER = '7a94feed73b962'
@@ -202,6 +205,8 @@ DEFAULT_FROM_EMAIL = 'no-reply@mailtrap.io'
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # For development only
 CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = ['https://cj5385-8000.csb.app']
 
 # Swagger settings
 SWAGGER_SETTINGS = {
